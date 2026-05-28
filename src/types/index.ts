@@ -1,4 +1,5 @@
 export type NoteDuration = 'h' | 'q' | '8' | '16';
+export type StaffNoteAccidental = '#' | 'b';
 
 export interface StaffNote {
   id: string;
@@ -12,4 +13,5 @@ export interface StaffNote {
   duration: NoteDuration;
   durationBeats: number;
   isRest?: boolean;
+  accidental?: StaffNoteAccidental;
 }

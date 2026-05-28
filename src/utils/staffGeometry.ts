@@ -87,3 +87,18 @@ export function generateNoteInfo(line: number) {
     fullName: getFullName(pos.displayName, pos.octave),
   };
 }
+
+export function generateAccidentalNoteInfo(line: number, accidental: '#' | 'b') {
+  const pos = STAFF_LINE_POSITIONS[line];
+  if (!pos) return null;
+  const accidentalPitch = `${pos.pitch}${accidental}`;
+  const accidentalDisplay = `${pos.displayName}${accidental === '#' ? '#' : 'b'}`;
+  return {
+    pitch: accidentalPitch,
+    octave: pos.octave,
+    displayName: accidentalDisplay,
+    key: getNoteKey(accidentalPitch, pos.octave),
+    fullName: `${accidentalDisplay}${pos.octave}`,
+    accidental,
+  };
+}

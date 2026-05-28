@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { NoteDuration } from '@/types';
+import { NoteDuration, StaffNoteAccidental } from '@/types';
 import MusicStaff from '@/components/MusicStaff';
 import PlaybackControls from '@/components/PlaybackControls';
 import { useStaffNotes } from '@/hooks/useStaffNotes';
@@ -10,6 +10,7 @@ export default function Home() {
   const { notes, addNote, removeNoteAt, clearNotes } = useStaffNotes();
   const [noteDuration, setNoteDuration] = useState<NoteDuration>('q');
   const [isRestMode, setIsRestMode] = useState(false);
+  const [accidental, setAccidental] = useState<StaffNoteAccidental | null>(null);
 
   return (
     <div className="min-h-screen bg-zinc-100 flex flex-col">
@@ -26,6 +27,7 @@ export default function Home() {
             notes={notes}
             noteDuration={noteDuration}
             isRestMode={isRestMode}
+            accidental={accidental}
             onAddNote={addNote}
             onRemoveNoteAt={removeNoteAt}
           />
@@ -53,6 +55,8 @@ export default function Home() {
         onDurationChange={setNoteDuration}
         isRestMode={isRestMode}
         onRestModeChange={setIsRestMode}
+        accidental={accidental}
+        onAccidentalChange={setAccidental}
       />
     </div>
   );

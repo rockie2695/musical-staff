@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Renderer, Stave, StaveNote, Voice, Formatter, Annotation } from 'vexflow';
-import { StaffNote, NoteDuration } from '@/types';
+import { Renderer, Stave, StaveNote, Voice, Formatter, Annotation, Accidental } from 'vexflow';
+import { StaffNote, NoteDuration, StaffNoteAccidental } from '@/types';
 import {
   MEASURE_WIDTH,
   STAFF_Y_OFFSET,
@@ -11,6 +11,7 @@ import {
   snapBeat,
   getNearestStaffPosition,
   generateNoteInfo,
+  generateAccidentalNoteInfo,
   DURATION_CONFIG,
   REST_DURATION,
 } from '@/utils/staffGeometry';
@@ -19,6 +20,7 @@ interface MusicStaffProps {
   notes: StaffNote[];
   noteDuration: NoteDuration;
   isRestMode: boolean;
+  accidental?: StaffNoteAccidental | null;
   onAddNote: (info: {
     pitch: string;
     octave: number;
@@ -29,6 +31,7 @@ interface MusicStaffProps {
     beat: number;
     duration: NoteDuration;
     isRest?: boolean;
+    accidental?: StaffNoteAccidental;
   }) => void;
   onRemoveNoteAt: (measure: number, beat: number) => void;
 }
@@ -46,7 +49,7 @@ const GHOST_STROKE = 'rgba(100, 116, 139, 0.3)';
 const HOVERED_FILL = '#94a3b8';
 const HOVERED_STROKE = '#64748b';
 
-export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote, onRemoveNoteAt }: MusicStaffProps) {
+export default function MusicStaff({ notes, noteDuration, isRestMode, accidental, onAddNote, onRemoveNoteAt }: MusicStaffProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const notesRef = useRef(notes);
@@ -57,10 +60,12 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
   const editingNoteRef = useRef<{ measure: number; beat: number } | null>(null);
   const noteDurationRef = useRef(noteDuration);
   const isRestModeRef = useRef(isRestMode);
+  const accidentalRef = useRef(accidental);
 
   useEffect(() => { notesRef.current = notes; }, [notes]);
   useEffect(() => { noteDurationRef.current = noteDuration; }, [noteDuration]);
   useEffect(() => { isRestModeRef.current = isRestMode; }, [isRestMode]);
+  useEffect(() => { accidentalRef.current = accidental; }, [accidental]);
 
   /* Resize observer */
   useEffect(() => {
@@ -212,6 +217,9 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
             if (keys.length > 1) {
               staveNote.setKeyStyle(1, { fillStyle: GHOST_FILL, strokeStyle: GHOST_STROKE });
             }
+            if (note.accidental) {
+              staveNote.addModifier(new Accidental(note.accidental), 0);
+            }
             const annotation = new Annotation(note.displayName);
             annotation.setFont('Arial', 11);
             annotation.setVerticalJustification('top');
@@ -220,6 +228,9 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
             staveNote = new StaveNote({ keys: ['b/4'], duration: REST_DURATION[note.duration] });
           } else {
             staveNote = new StaveNote({ keys: [note.key], duration: note.duration });
+            if (note.accidental) {
+              staveNote.addModifier(new Accidental(note.accidental), 0);
+            }
             const annotation = new Annotation(note.displayName);
             annotation.setFont('Arial', 11);
             annotation.setVerticalJustification('top');
@@ -272,13 +283,14 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
     const rawBeat = ((mx - col * MEASURE_WIDTH) / MEASURE_WIDTH) * BEATS_PER_MEASURE;
     const beat = snapBeat(rawBeat, noteDurationRef.current);
 
-    /* compute pitch from Y */
+    /* compute pitch from Y (with optional accidental) */
     const rowY = STAFF_Y_OFFSET + row * ROW_HEIGHT;
     const tempStave = new Stave(0, rowY, MEASURE_WIDTH);
     tempStave.addClef('treble');
     const pos = getNearestStaffPosition(my, tempStave);
     if (!pos) return;
-    const noteInfo = generateNoteInfo(pos.line);
+    const acc = accidentalRef.current;
+    const noteInfo = acc ? generateAccidentalNoteInfo(pos.line, acc) : generateNoteInfo(pos.line);
     if (!noteInfo) return;
 
     const curr = hoveredPosRef.current;
@@ -328,12 +340,15 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
     /* Clamp so the note fits within the measure (e.g. half-note at beat 4 → beat 2) */
     const beat = Math.min(snappedBeat, BEATS_PER_MEASURE - DURATION_CONFIG[dur].beats);
 
-    /* Compute pitch from click Y (shared by re-pitch confirm and add) */
+    /* Compute pitch from click Y (shared by re-pitch confirm and add, with optional accidental) */
     const rowY = STAFF_Y_OFFSET + row * ROW_HEIGHT;
     const tempStave = new Stave(0, rowY, MEASURE_WIDTH);
     tempStave.addClef('treble');
-    const pos = getNearestStaffPosition(clickY, tempStave);
-    const noteInfo = pos ? generateNoteInfo(pos.line) : null;
+    const clickPos = getNearestStaffPosition(clickY, tempStave);
+    const clickAcc = accidentalRef.current;
+    const noteInfo = clickPos
+      ? (clickAcc ? generateAccidentalNoteInfo(clickPos.line, clickAcc) : generateNoteInfo(clickPos.line))
+      : null;
 
     /* Check if clicking on an existing note */
     const clickedNote = currentNotes.find(

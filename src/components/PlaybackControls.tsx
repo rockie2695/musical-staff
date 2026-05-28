@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayback } from '@/hooks/usePlayback';
-import { StaffNote, NoteDuration } from '@/types';
+import { StaffNote, NoteDuration, StaffNoteAccidental } from '@/types';
 import { DURATION_CONFIG } from '@/utils/staffGeometry';
 
 interface PlaybackControlsProps {
@@ -10,11 +10,13 @@ interface PlaybackControlsProps {
   onDurationChange: (d: NoteDuration) => void;
   isRestMode: boolean;
   onRestModeChange: (r: boolean) => void;
+  accidental?: StaffNoteAccidental | null;
+  onAccidentalChange?: (a: StaffNoteAccidental | null) => void;
 }
 
 const DURATIONS: NoteDuration[] = ['h', 'q', '8', '16'];
 
-export default function PlaybackControls({ notes, noteDuration, onDurationChange, isRestMode, onRestModeChange }: PlaybackControlsProps) {
+export default function PlaybackControls({ notes, noteDuration, onDurationChange, isRestMode, onRestModeChange, accidental, onAccidentalChange }: PlaybackControlsProps) {
   const { isPlaying, togglePlay, stop } = usePlayback(notes);
 
   return (
@@ -64,6 +66,45 @@ export default function PlaybackControls({ notes, noteDuration, onDurationChange
             </button>
           ))}
         </div>
+
+        {/* Accidental toggle (sharp / natural / flat) */}
+        {onAccidentalChange && (
+          <div className="flex items-center gap-1 pr-3 border-r border-zinc-200">
+            <button
+              onClick={() => onAccidentalChange('b')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                ${accidental === 'b'
+                  ? 'bg-zinc-900 text-white shadow-sm'
+                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                }`}
+              title="降記號 (flat)"
+            >
+              ♭
+            </button>
+            <button
+              onClick={() => onAccidentalChange(null)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                ${!accidental
+                  ? 'bg-zinc-900 text-white shadow-sm'
+                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                }`}
+              title="還原記號 (natural)"
+            >
+              ♮
+            </button>
+            <button
+              onClick={() => onAccidentalChange('#')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                ${accidental === '#'
+                  ? 'bg-zinc-900 text-white shadow-sm'
+                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                }`}
+              title="升記號 (sharp)"
+            >
+              #
+            </button>
+          </div>
+        )}
 
         <span className="text-sm text-zinc-400">
           {notes.length}

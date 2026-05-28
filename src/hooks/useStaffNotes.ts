@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { StaffNote, NoteDuration } from '@/types';
+import { StaffNote, NoteDuration, StaffNoteAccidental } from '@/types';
 import { getDurationBeats } from '@/utils/staffGeometry';
 
 export function useStaffNotes() {
@@ -17,6 +17,7 @@ export function useStaffNotes() {
     beat: number;
     duration: NoteDuration;
     isRest?: boolean;
+    accidental?: StaffNoteAccidental;
   }) => {
     setNotes((prev) => {
       const beats = getDurationBeats(info.duration);
@@ -31,6 +32,7 @@ export function useStaffNotes() {
         ...info,
         isRest: info.isRest ?? false,
         durationBeats: beats,
+        accidental: info.accidental,
       };
       return [...prev, newNote].sort(
         (a, b) => a.measure - b.measure || a.beat - b.beat
