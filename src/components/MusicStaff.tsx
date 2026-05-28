@@ -109,12 +109,14 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
     function fillGapWithRests(start: number, end: number, tickables: StaveNote[], measureIdx: number, hov: HoverPos | null, invisible = false) {
       const dur = noteDurationRef.current;
       const ghostBeats = DURATION_CONFIG[dur].beats;
+      /* During re-pitch mode, skip ghost in gaps — ghost appears at editing note's position instead */
+      const skipGhost = editingNoteRef.current !== null;
       let p = start;
       while (p + 0.005 < end) {
         const gap = end - p;
 
-        /* only insert ghost if it fits within the gap */
-        if (hov && hov.m === measureIdx && hov.b >= p - 0.001 && hov.b < p + gap - 0.001 && hov.b + ghostBeats <= end + 0.001) {
+        /* only insert ghost if it fits within the gap (skipped during re-pitch) */
+        if (!skipGhost && hov && hov.m === measureIdx && hov.b >= p - 0.001 && hov.b < p + gap - 0.001 && hov.b + ghostBeats <= end + 0.001) {
           fillSimpleGap(p, hov.b, tickables, invisible);
           addGhost(tickables, hov, dur);
           p = hov.b + ghostBeats;
@@ -195,8 +197,26 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
         for (const note of measureNotes) {
           fillGapWithRests(pos, note.beat, tickables, m, hovered);
 
+          const isEditingNote = editingNoteRef.current !== null &&
+            editingNoteRef.current.measure === note.measure &&
+            editingNoteRef.current.beat === note.beat;
+
           let staveNote: StaveNote;
-          if (note.isRest) {
+          if (isEditingNote && !note.isRest) {
+            /* Re-pitch mode: show original note + translucent ghost as a chord */
+            const keys = [note.key];
+            if (hovered && hovered.key !== note.key) {
+              keys.push(hovered.key);
+            }
+            staveNote = new StaveNote({ keys, duration: note.duration });
+            if (keys.length > 1) {
+              staveNote.setKeyStyle(1, { fillStyle: GHOST_FILL, strokeStyle: GHOST_STROKE });
+            }
+            const annotation = new Annotation(note.displayName);
+            annotation.setFont('Arial', 11);
+            annotation.setVerticalJustification('top');
+            staveNote.addModifier(annotation);
+          } else if (note.isRest) {
             staveNote = new StaveNote({ keys: ['b/4'], duration: REST_DURATION[note.duration] });
           } else {
             staveNote = new StaveNote({ keys: [note.key], duration: note.duration });
@@ -206,7 +226,7 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
             staveNote.addModifier(annotation);
           }
 
-          if (hovered && hovered.m === note.measure && hovered.b === note.beat) {
+          if (hovered && !isEditingNote && hovered.m === note.measure && hovered.b === note.beat) {
             staveNote.setStyle({ fillStyle: HOVERED_FILL, strokeStyle: HOVERED_STROKE });
           }
 
@@ -339,12 +359,14 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, onAddNote,
       }
       /* Clicking a different note → switch re-pitch target */
       editingNoteRef.current = { measure: clickedNote.measure, beat: clickedNote.beat };
+      setHoverTick((t) => t + 1);
       return;
     }
 
     /* Clicking empty space while editing → cancel */
     if (editingNoteRef.current) {
       editingNoteRef.current = null;
+      setHoverTick((t) => t + 1);
       return;
     }
 

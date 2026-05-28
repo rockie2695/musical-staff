@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Music Staff",
-  description: "Interactive music staff - click to compose",
+  title: "Musical Staff",
+  description: "Interactive musical staff - click to compose",
 };
 
 export default function RootLayout({
