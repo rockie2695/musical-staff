@@ -11,13 +11,13 @@ export const DURATION_CONFIG: Record<NoteDuration, {
   value: number;
   step: number;
   vexflow: string;
-  label: string;
+  i18nKey: string;
   beats: number;
 }> = {
-  h:  { value: 2, step: 2,     vexflow: 'h',  label: '二分', beats: 2 },
-  q:  { value: 4, step: 1,     vexflow: 'q',  label: '四分', beats: 1 },
-  '8': { value: 8, step: 0.5,  vexflow: '8',  label: '八分', beats: 0.5 },
-  '16':{ value: 16, step: 0.25, vexflow: '16', label: '十六分', beats: 0.25 },
+  h:  { value: 2, step: 2,     vexflow: 'h',  i18nKey: 'controls.half', beats: 2 },
+  q:  { value: 4, step: 1,     vexflow: 'q',  i18nKey: 'controls.quarter', beats: 1 },
+  '8': { value: 8, step: 0.5,  vexflow: '8',  i18nKey: 'controls.eighth', beats: 0.5 },
+  '16':{ value: 16, step: 0.25, vexflow: '16', i18nKey: 'controls.sixteenth', beats: 0.25 },
 };
 
 export const REST_DURATION: Record<NoteDuration, string> = {

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Renderer, Stave, StaveNote, Voice, Formatter, Annotation, Accidental } from 'vexflow';
+import { Renderer, Stave, StaveNote, Voice, Formatter, Annotation, Accidental, Articulation, Tuplet, Curve, Beam } from 'vexflow';
 import { StaffNote, NoteDuration, StaffNoteAccidental } from '@/types';
+import { useLocale } from '@/i18n/I18nContext';
 import {
   MEASURE_WIDTH,
   STAFF_Y_OFFSET,
   ROW_HEIGHT,
   BEATS_PER_MEASURE,
   snapBeat,
+  getDurationBeats,
   getNearestStaffPosition,
   generateNoteInfo,
   generateAccidentalNoteInfo,
@@ -16,23 +18,33 @@ import {
   REST_DURATION,
 } from '@/utils/staffGeometry';
 
+interface TupletNoteInfo {
+  pitch: string;
+  octave: number;
+  displayName: string;
+  key: string;
+  fullName: string;
+  measure: number;
+  beat: number;
+  duration: NoteDuration;
+  accidental?: StaffNoteAccidental;
+  accent?: boolean;
+}
+
 interface MusicStaffProps {
   notes: StaffNote[];
   noteDuration: NoteDuration;
   isRestMode: boolean;
   accidental?: StaffNoteAccidental | null;
-  onAddNote: (info: {
-    pitch: string;
-    octave: number;
-    displayName: string;
-    key: string;
-    fullName: string;
-    measure: number;
-    beat: number;
-    duration: NoteDuration;
-    isRest?: boolean;
-    accidental?: StaffNoteAccidental;
+  accent?: boolean;
+  tupletActive?: boolean;
+  slurActive?: boolean;
+  onAddNote: (info: TupletNoteInfo & { isRest?: boolean }) => void;
+  onAddTuplet?: (info: {
+    notes: TupletNoteInfo[];
+    tupletId?: string;
   }) => void;
+  onMarkSlurNotes?: (id1: string, id2: string, slurId: string) => void;
   onRemoveNoteAt: (measure: number, beat: number) => void;
 }
 
@@ -49,7 +61,7 @@ const GHOST_STROKE = 'rgba(100, 116, 139, 0.3)';
 const HOVERED_FILL = '#94a3b8';
 const HOVERED_STROKE = '#64748b';
 
-export default function MusicStaff({ notes, noteDuration, isRestMode, accidental, onAddNote, onRemoveNoteAt }: MusicStaffProps) {
+export default function MusicStaff({ notes, noteDuration, isRestMode, accidental, accent, tupletActive, slurActive, onAddNote, onAddTuplet, onMarkSlurNotes, onRemoveNoteAt }: MusicStaffProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const notesRef = useRef(notes);
@@ -61,11 +73,21 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
   const noteDurationRef = useRef(noteDuration);
   const isRestModeRef = useRef(isRestMode);
   const accidentalRef = useRef(accidental);
+  const accentRef = useRef(accent);
+  const tupletActiveRef = useRef(tupletActive);
+  const slurActiveRef = useRef(slurActive);
+  const [slurTick, setSlurTick] = useState(0);
+  const slurFirstNoteIdRef = useRef<string | null>(null);
+  const tupletIdCounterRef = useRef(0);
+  const { t } = useLocale();
 
   useEffect(() => { notesRef.current = notes; }, [notes]);
   useEffect(() => { noteDurationRef.current = noteDuration; }, [noteDuration]);
   useEffect(() => { isRestModeRef.current = isRestMode; }, [isRestMode]);
   useEffect(() => { accidentalRef.current = accidental; }, [accidental]);
+  useEffect(() => { accentRef.current = accent; }, [accent]);
+  useEffect(() => { tupletActiveRef.current = tupletActive; }, [tupletActive]);
+  useEffect(() => { slurActiveRef.current = slurActive; }, [slurActive]);
 
   /* Resize observer */
   useEffect(() => {
@@ -191,6 +213,9 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
 
       const tickables: StaveNote[] = [];
 
+      const tupletGroups = new Map<string, StaveNote[]>();
+      const slurGroups = new Map<string, StaveNote[]>();
+
       if (notes.length > 0) {
         /* ---- normal rendering with notes + gap fills + ghost ---- */
         const measureNotes = notes
@@ -220,6 +245,9 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
             if (note.accidental) {
               staveNote.addModifier(new Accidental(note.accidental), 0);
             }
+            if (note.accent) {
+              staveNote.addModifier(new Articulation('a>'), 0);
+            }
             const annotation = new Annotation(note.displayName);
             annotation.setFont('Arial', 11);
             annotation.setVerticalJustification('top');
@@ -231,14 +259,35 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
             if (note.accidental) {
               staveNote.addModifier(new Accidental(note.accidental), 0);
             }
+            if (note.accent) {
+              staveNote.addModifier(new Articulation('a>'), 0);
+            }
             const annotation = new Annotation(note.displayName);
             annotation.setFont('Arial', 11);
             annotation.setVerticalJustification('top');
             staveNote.addModifier(annotation);
           }
 
+          /* Highlight first slur-selected note in blue */
+          if (slurFirstNoteIdRef.current === note.id) {
+            staveNote.setStyle({ fillStyle: '#3b82f6', strokeStyle: '#1d4ed8' });
+          }
+
           if (hovered && !isEditingNote && hovered.m === note.measure && hovered.b === note.beat) {
             staveNote.setStyle({ fillStyle: HOVERED_FILL, strokeStyle: HOVERED_STROKE });
+          }
+
+          if (note.tupletId) {
+            if (!tupletGroups.has(note.tupletId)) {
+              tupletGroups.set(note.tupletId, []);
+            }
+            tupletGroups.get(note.tupletId)!.push(staveNote);
+          }
+          if (note.slurId) {
+            if (!slurGroups.has(note.slurId)) {
+              slurGroups.set(note.slurId, []);
+            }
+            slurGroups.get(note.slurId)!.push(staveNote);
           }
 
           tickables.push(staveNote);
@@ -257,8 +306,45 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
         new Formatter().joinVoices([voice]).format([voice], MEASURE_WIDTH - 30);
         voice.draw(ctx, stave);
       }
+
+      /* Draw tuplet brackets */
+      for (const [, group] of tupletGroups) {
+        if (group.length >= 2) {
+          const tuplet = new Tuplet(group, { numNotes: group.length, notesOccupied: 2, ratioed: false });
+          tuplet.setContext(ctx);
+          tuplet.draw();
+        }
+      }
+
+      /* Draw slur curves */
+      for (const [, group] of slurGroups) {
+        if (group.length >= 2) {
+          const curve = new Curve(group[0], group[group.length - 1], { position: Curve.Position.NEAR_HEAD });
+          curve.setContext(ctx);
+          curve.draw();
+        }
+      }
+
+      /* Auto-beam consecutive short notes (eighth & sixteenth) */
+      const beamGroups: StaveNote[][] = [];
+      let currentBeamGroup: StaveNote[] = [];
+      for (const t of tickables) {
+        const isShort = !t.isRest() && (t.getDuration() === '8' || t.getDuration() === '16');
+        if (isShort) {
+          currentBeamGroup.push(t);
+        } else {
+          if (currentBeamGroup.length >= 2) beamGroups.push(currentBeamGroup);
+          currentBeamGroup = [];
+        }
+      }
+      if (currentBeamGroup.length >= 2) beamGroups.push(currentBeamGroup);
+      for (const group of beamGroups) {
+        const beam = new Beam(group, true);
+        beam.setContext(ctx);
+        beam.draw();
+      }
     }
-  }, [notes, containerWidth, hoverTick]);
+  }, [notes, containerWidth, hoverTick, slurTick]);
 
   /* -------- mouse-move (hover) -------- */
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -350,7 +436,41 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
       ? (clickAcc ? generateAccidentalNoteInfo(clickPos.line, clickAcc) : generateNoteInfo(clickPos.line))
       : null;
 
-    /* Check if clicking on an existing note */
+    /* Slur mode: pick two existing notes to connect */
+    if (slurActiveRef.current) {
+      const clickedNote = currentNotes.find(
+        (n) => n.measure === measureIndex && n.beat === beat
+      );
+      if (!clickedNote) {
+        /* Clicked empty space → cancel selection if any */
+        if (slurFirstNoteIdRef.current) {
+          slurFirstNoteIdRef.current = null;
+          setSlurTick((t) => t + 1);
+        }
+        return; /* Block note addition in slur mode */
+      }
+      /* Clicked an existing note */
+      if (!slurFirstNoteIdRef.current) {
+        /* First selection — highlight it */
+        slurFirstNoteIdRef.current = clickedNote.id;
+        setSlurTick((t) => t + 1);
+        return;
+      }
+      if (slurFirstNoteIdRef.current === clickedNote.id) {
+        /* Same note again → cancel selection */
+        slurFirstNoteIdRef.current = null;
+        setSlurTick((t) => t + 1);
+        return;
+      }
+      /* Different note → create slur */
+      const slurId = `sl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      onMarkSlurNotes?.(slurFirstNoteIdRef.current, clickedNote.id, slurId);
+      slurFirstNoteIdRef.current = null;
+      setSlurTick((t) => t + 1);
+      return;
+    }
+
+    /* Check if clicking on an existing note (re-pitch mode) */
     const clickedNote = currentNotes.find(
       (n) => n.measure === measureIndex && n.beat === beat
     );
@@ -368,6 +488,7 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
             beat: clickedNote.beat,
             duration: dur,
             isRest: isRest || undefined,
+            accent: accentRef.current || undefined,
           });
         }
         return;
@@ -385,6 +506,29 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
       return;
     }
 
+    /* Batch mode (tuplet only): add 3 back-to-back eighth notes grouped as needed */
+    const isBatch = tupletActiveRef.current && !isRest && noteInfo;
+    if (isBatch && onAddTuplet) {
+      const tupletId = `t-${Date.now()}-${tupletIdCounterRef.current++}`;
+      const step = getDurationBeats('8'); // 0.5
+      const notes: TupletNoteInfo[] = [];
+      for (let i = 0; i < 3; i++) {
+        const b = beat + i * step;
+        if (b >= BEATS_PER_MEASURE) break;
+        notes.push({
+          ...noteInfo,
+          measure: measureIndex,
+          beat: b,
+          duration: '8' as NoteDuration,
+          accent: accentRef.current || undefined,
+        });
+      }
+      if (notes.length >= 2) {
+        onAddTuplet({ notes, tupletId });
+      }
+      return;
+    }
+
     /* Normal add */
     if (!noteInfo) return;
     onAddNote({
@@ -393,8 +537,9 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
       beat,
       duration: dur,
       isRest: isRest || undefined,
+      accent: accentRef.current || undefined,
     });
-  }, [onAddNote, onRemoveNoteAt]);
+  }, [onAddNote, onRemoveNoteAt, onAddTuplet, onMarkSlurNotes]);
 
   return (
     <div
@@ -406,7 +551,7 @@ export default function MusicStaff({ notes, noteDuration, isRestMode, accidental
     >
       {notes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-zinc-400 text-sm pointer-events-none">
-          點擊此處開始作曲
+          {t('staff.emptyHint')}
         </div>
       )}
     </div>

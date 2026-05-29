@@ -4,21 +4,31 @@ import { useState } from 'react';
 import { NoteDuration, StaffNoteAccidental } from '@/types';
 import MusicStaff from '@/components/MusicStaff';
 import PlaybackControls from '@/components/PlaybackControls';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useStaffNotes } from '@/hooks/useStaffNotes';
+import { I18nProvider, useLocale } from '@/i18n/I18nContext';
 
-export default function Home() {
-  const { notes, addNote, removeNoteAt, clearNotes } = useStaffNotes();
+function HomeContent() {
+  const { notes, addNote, removeNoteAt, clearNotes, addTupletNotes, markSlurNotes } =
+    useStaffNotes();
   const [noteDuration, setNoteDuration] = useState<NoteDuration>('q');
   const [isRestMode, setIsRestMode] = useState(false);
   const [accidental, setAccidental] = useState<StaffNoteAccidental | null>(null);
+  const [accent, setAccent] = useState(false);
+  const [tupletActive, setTupletActive] = useState(false);
+  const [slurActive, setSlurActive] = useState(false);
+  const { t } = useLocale();
 
   return (
     <div className="min-h-screen bg-zinc-100 flex flex-col">
-      <header className="px-6 py-4 border-b border-zinc-200 shrink-0">
-        <h1 className="text-xl font-bold text-zinc-900 tracking-tight">五線譜</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          點擊五線譜的線或空間來加入或移除音符
-        </p>
+      <header className="px-6 py-4 border-b border-zinc-200 shrink-0 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-zinc-900 tracking-tight">
+            {t('app.title')}
+          </h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{t('app.subtitle')}</p>
+        </div>
+        <LanguageSwitcher />
       </header>
 
       <main className="flex-1 p-4 sm:p-6 pb-36 min-w-0">
@@ -28,7 +38,12 @@ export default function Home() {
             noteDuration={noteDuration}
             isRestMode={isRestMode}
             accidental={accidental}
+            accent={accent}
+            tupletActive={tupletActive}
+            slurActive={slurActive}
             onAddNote={addNote}
+            onAddTuplet={addTupletNotes}
+            onMarkSlurNotes={markSlurNotes}
             onRemoveNoteAt={removeNoteAt}
           />
         </div>
@@ -36,14 +51,14 @@ export default function Home() {
         {notes.length > 0 && (
           <div className="mt-4 flex justify-center gap-4 items-center">
             <span className="text-sm text-zinc-400">
-              {notes.length} 個記號
+              {t('staff.notesCount').replace('{count}', String(notes.length))}
             </span>
             <span className="text-zinc-300">·</span>
             <button
               onClick={clearNotes}
-              className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+              className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
             >
-              清除全部
+              {t('staff.clearAll')}
             </button>
           </div>
         )}
@@ -57,7 +72,21 @@ export default function Home() {
         onRestModeChange={setIsRestMode}
         accidental={accidental}
         onAccidentalChange={setAccidental}
+        accent={accent}
+        onAccentChange={setAccent}
+        tupletActive={tupletActive}
+        onTupletActiveChange={setTupletActive}
+        slurActive={slurActive}
+        onSlurActiveChange={setSlurActive}
       />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <I18nProvider>
+      <HomeContent />
+    </I18nProvider>
   );
 }

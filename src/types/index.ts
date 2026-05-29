@@ -14,4 +14,7 @@ export interface StaffNote {
   durationBeats: number;
   isRest?: boolean;
   accidental?: StaffNoteAccidental;
+  accent?: boolean;
+  tupletId?: string;
+  slurId?: string;
 }

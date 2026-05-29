@@ -3,6 +3,7 @@
 import { usePlayback } from "@/hooks/usePlayback";
 import { StaffNote, NoteDuration, StaffNoteAccidental } from "@/types";
 import { DURATION_CONFIG } from "@/utils/staffGeometry";
+import { useLocale } from "@/i18n/I18nContext";
 
 interface PlaybackControlsProps {
   notes: StaffNote[];
@@ -12,6 +13,12 @@ interface PlaybackControlsProps {
   onRestModeChange: (r: boolean) => void;
   accidental?: StaffNoteAccidental | null;
   onAccidentalChange?: (a: StaffNoteAccidental | null) => void;
+  accent?: boolean;
+  onAccentChange?: (a: boolean) => void;
+  tupletActive?: boolean;
+  onTupletActiveChange?: (t: boolean) => void;
+  slurActive?: boolean;
+  onSlurActiveChange?: (t: boolean) => void;
 }
 
 const DURATIONS: NoteDuration[] = ["h", "q", "8", "16"];
@@ -24,8 +31,15 @@ export default function PlaybackControls({
   onRestModeChange,
   accidental,
   onAccidentalChange,
+  accent,
+  onAccentChange,
+  tupletActive,
+  onTupletActiveChange,
+  slurActive,
+  onSlurActiveChange,
 }: PlaybackControlsProps) {
   const { isPlaying, togglePlay, stop } = usePlayback(notes);
+  const { t } = useLocale();
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
@@ -40,9 +54,9 @@ export default function PlaybackControls({
                   ? "bg-zinc-900 text-white shadow-sm"
                   : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
               }`}
-            title="音符模式"
+            title={t("controls.note")}
           >
-            音符
+            {t("controls.note")}
           </button>
           <button
             onClick={() => onRestModeChange(true)}
@@ -52,9 +66,9 @@ export default function PlaybackControls({
                   ? "bg-zinc-900 text-white shadow-sm"
                   : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
               }`}
-            title="休止符模式"
+            title={t("controls.rest")}
           >
-            休止符
+            {t("controls.rest")}
           </button>
         </div>
 
@@ -70,9 +84,9 @@ export default function PlaybackControls({
                     ? "bg-zinc-900 text-white shadow-sm"
                     : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                 }`}
-              title={`${DURATION_CONFIG[d].label}`}
+              title={t(DURATION_CONFIG[d].i18nKey)}
             >
-              {DURATION_CONFIG[d].label}
+              {t(DURATION_CONFIG[d].i18nKey)}
             </button>
           ))}
         </div>
@@ -88,7 +102,7 @@ export default function PlaybackControls({
                     ? "bg-zinc-900 text-white shadow-sm"
                     : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                 }`}
-              title="降記號 (flat)"
+              title={t("controls.flat")}
             >
               ♭
             </button>
@@ -100,7 +114,7 @@ export default function PlaybackControls({
                     ? "bg-zinc-900 text-white shadow-sm"
                     : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                 }`}
-              title="還原記號 (natural)"
+              title={t("controls.natural")}
             >
               ♮
             </button>
@@ -112,9 +126,63 @@ export default function PlaybackControls({
                     ? "bg-zinc-900 text-white shadow-sm"
                     : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                 }`}
-              title="升記號 (sharp)"
+              title={t("controls.sharp")}
             >
               #
+            </button>
+          </div>
+        )}
+
+        {/* Accent toggle */}
+        {onAccentChange && (
+          <div className="flex items-center gap-1 pr-3 border-r border-zinc-200">
+            <button
+              onClick={() => onAccentChange(!accent)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
+                ${
+                  accent
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                }`}
+              title={t("controls.accent")}
+            >
+              {">"}
+            </button>
+          </div>
+        )}
+
+        {/* Tuplet toggle */}
+        {onTupletActiveChange && (
+          <div className="flex items-center gap-1 pr-3 border-r border-zinc-200">
+            <button
+              onClick={() => onTupletActiveChange(!tupletActive)}
+              className={`px-2.5 py-0.5 rounded-lg text-xs font-medium transition-all cursor-pointer
+                ${
+                  tupletActive
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                }`}
+              title={t("controls.tuplet")}
+            >
+              {t("controls.tuplet")}
+            </button>
+          </div>
+        )}
+
+        {/* Slur toggle */}
+        {onSlurActiveChange && (
+          <div className="flex items-center gap-1 pr-3 border-r border-zinc-200">
+            <button
+              onClick={() => onSlurActiveChange(!slurActive)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
+                ${
+                  slurActive
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                }`}
+              title={t("controls.slur")}
+            >
+              ⌢
             </button>
           </div>
         )}
@@ -132,7 +200,7 @@ export default function PlaybackControls({
                   ? "bg-amber-500 text-black hover:bg-amber-400"
                   : "bg-emerald-500 text-white hover:bg-emerald-400"
             }`}
-          title={isPlaying ? "暫停" : "播放"}
+          title={isPlaying ? t("controls.pause") : t("controls.play")}
         >
           {isPlaying ? "⏸" : "▶"}
         </button>
@@ -145,7 +213,7 @@ export default function PlaybackControls({
                 ? "bg-zinc-100 text-zinc-300 cursor-not-allowed"
                 : "bg-red-500 text-white hover:bg-red-400"
             }`}
-          title="停止"
+          title={t("controls.stop")}
         >
           ⏹
         </button>
