@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/_next/', '/api/'],
     },
-    sitemap: 'https://music-staff.example.com/sitemap.xml',
+    sitemap: 'https://musical-staff.vercel.app/sitemap.xml',
   };
 }

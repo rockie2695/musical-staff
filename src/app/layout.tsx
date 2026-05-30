@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: seo.description,
     keywords: seo.keywords,
     authors: [{ name: 'Music Staff' }],
-    metadataBase: new URL('https://music-staff.example.com'),
+    metadataBase: new URL('https://musical-staff.vercel.app'),
 
     openGraph: {
       title: seo.ogTitle,
