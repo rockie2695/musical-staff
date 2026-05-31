@@ -38,13 +38,15 @@ export function getDurationBeats(duration: NoteDuration): number {
 
 export function getNearestStaffPosition(y: number, stave: Stave): { line: number; info: StaffPositionInfo } | null {
   const positions: { line: number; y: number }[] = [];
+  const EXTRA_LINES = 2; // ledger lines above & below
 
-  for (let i = 0; i < 5; i++) {
+  /* Cover 5 staff lines + EXTRA_LINES ledger lines on each side */
+  for (let i = -EXTRA_LINES; i < 5 + EXTRA_LINES; i++) {
     positions.push({ line: i, y: stave.getYForLine(i) });
-  }
-  for (let i = 0; i < 4; i++) {
-    const midY = (stave.getYForLine(i) + stave.getYForLine(i + 1)) / 2;
-    positions.push({ line: i + 0.5, y: midY });
+    if (i < 5 + EXTRA_LINES - 1) {
+      const midY = (stave.getYForLine(i) + stave.getYForLine(i + 1)) / 2;
+      positions.push({ line: i + 0.5, y: midY });
+    }
   }
 
   let nearest = positions[0];

@@ -1,5 +1,6 @@
 export type NoteDuration = 'h' | 'q' | '8' | '16';
 export type StaffNoteAccidental = '#' | 'b';
+export type InstrumentType = 'synth' | 'piano';
 
 export interface StaffNote {
   id: string;

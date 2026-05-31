@@ -84,9 +84,5 @@ function HomeContent() {
 }
 
 export default function Home() {
-  return (
-    <I18nProvider>
-      <HomeContent />
-    </I18nProvider>
-  );
+  return <HomeContent />;
 }

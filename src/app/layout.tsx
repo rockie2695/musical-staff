@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { getMessages, type Locale } from "@/i18n/messages";
-import { LOCALE_COOKIE } from "@/i18n/I18nContext";
+import { LOCALE_COOKIE, I18nProvider } from "@/i18n/I18nContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -115,7 +115,9 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full bg-zinc-100 text-zinc-900 font-sans">
-        {children}
+        <I18nProvider initialLocale={locale}>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );
